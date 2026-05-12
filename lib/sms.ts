@@ -1,22 +1,12 @@
-import { SolapiMessageService } from 'solapi'
-
-const service = new SolapiMessageService(
-  process.env.SOLAPI_API_KEY!,
-  process.env.SOLAPI_API_SECRET!
-)
-
 export async function sendSMS(to: string, text: string) {
-  const supabase = (await import('./supabase/server')).createClient
-  const client = await supabase()
-  const { data } = await client.from('app_settings').select('value').eq('key', 'sms_enabled').single()
-  if (data?.value === 'false') return
-
+  if (!process.env.SOLAPI_API_KEY || !process.env.SOLAPI_FROM) return
+  const toDigits = to.replace(/\D/g, '')
+  if (!toDigits) return
   try {
-    await service.sendOne({
-      to,
-      from: process.env.SOLAPI_FROM!,
-      text,
-    })
+    const { SolapiMessageService } = await import('solapi')
+    const service = new SolapiMessageService(process.env.SOLAPI_API_KEY!, process.env.SOLAPI_API_SECRET!)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (service as any).send({ to: toDigits, from: process.env.SOLAPI_FROM, text })
   } catch (e) {
     console.error('SMS 전송 실패:', e)
   }
