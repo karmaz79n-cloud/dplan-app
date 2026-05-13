@@ -6,6 +6,7 @@ type Row = {
   time: string
   content: string
   done: boolean
+  extended?: boolean
 }
 
 type PlanCard = {
@@ -31,6 +32,12 @@ function displayDate(date: string) {
   return `${y}.${m}.${d}`
 }
 
+function displayHour(time: string) {
+  const hour = Number(time.split(':')[0])
+  const shown = hour % 12 === 0 ? 12 : hour % 12
+  return `${shown}시`
+}
+
 function addDays(date: string, diff: number) {
   const [y, m, d] = date.split('-').map(Number)
   const dt = new Date(y, m - 1, d)
@@ -42,11 +49,32 @@ function addDays(date: string, diff: number) {
 }
 
 function makeRows(): Row[] {
-  return TIME_SLOTS.map((time) => ({ time, content: '', done: false }))
+  return TIME_SLOTS.map((time) => ({ time, content: '', done: false, extended: false }))
 }
 
 function makeCard(): PlanCard {
   return { name: '', rows: makeRows() }
+}
+
+function normalizeCards(input: unknown): PlanCard[] {
+  if (!Array.isArray(input)) return [makeCard()]
+
+  return input.map((card) => {
+    const c = card as PlanCard
+    const rows = Array.isArray(c?.rows)
+      ? c.rows.map((r) => ({
+          time: typeof r.time === 'string' ? r.time : '',
+          content: typeof r.content === 'string' ? r.content : '',
+          done: typeof r.done === 'boolean' ? r.done : false,
+          extended: typeof r.extended === 'boolean' ? r.extended : false,
+        }))
+      : makeRows()
+
+    return {
+      name: typeof c?.name === 'string' ? c.name : '',
+      rows,
+    }
+  })
 }
 
 export default function HomePage() {
@@ -76,7 +104,7 @@ export default function HomePage() {
     }
 
     if (Array.isArray(data.cards) && data.cards.length > 0) {
-      const loaded = data.cards as PlanCard[]
+      const loaded = normalizeCards(data.cards)
       setCards(loaded)
       setSavedCards(loaded)
     } else {
@@ -122,16 +150,44 @@ export default function HomePage() {
     setCards((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
   }
 
-  function updateRow(cardIndex: number, rowIndex: number, patch: Partial<Row>) {
+  function updateRowContent(cardIndex: number, rowIndex: number, content: string) {
     setCards((prev) =>
-      prev.map((c, i) =>
-        i === cardIndex
-          ? {
-              ...c,
-              rows: c.rows.map((r, ri) => (ri === rowIndex ? { ...r, ...patch } : r)),
-            }
-          : c,
-      ),
+      prev.map((c, i) => {
+        if (i !== cardIndex) return c
+
+        const rows = c.rows.map((r) => ({ ...r }))
+        rows[rowIndex] = { ...rows[rowIndex], content }
+
+        for (let k = rowIndex + 1; k < rows.length; k += 1) {
+          if (!rows[k].extended) break
+          rows[k] = { ...rows[k], content }
+        }
+
+        return { ...c, rows }
+      }),
+    )
+  }
+
+  function toggleExtend(cardIndex: number, rowIndex: number) {
+    if (rowIndex <= 0) return
+
+    setCards((prev) =>
+      prev.map((c, i) => {
+        if (i !== cardIndex) return c
+
+        const rows = c.rows.map((r) => ({ ...r }))
+        const before = rows[rowIndex - 1]
+        const current = rows[rowIndex]
+        const nextExtended = !current.extended
+
+        rows[rowIndex] = {
+          ...current,
+          extended: nextExtended,
+          content: nextExtended ? before.content : current.content,
+        }
+
+        return { ...c, rows }
+      }),
     )
   }
 
@@ -160,15 +216,15 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setSelectedDate((d) => addDays(d, -1))}
-              className="px-2 py-1 text-xs rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+              className="px-2 py-1 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               ←
             </button>
-            <p className="text-xs text-slate-600 min-w-[96px] text-center">{displayDate(selectedDate)}</p>
+            <p className="text-sm text-slate-700 min-w-[110px] text-center font-medium">{displayDate(selectedDate)}</p>
             <button
               type="button"
               onClick={() => setSelectedDate((d) => addDays(d, 1))}
-              className="px-2 py-1 text-xs rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+              className="px-2 py-1 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               →
             </button>
@@ -178,21 +234,21 @@ export default function HomePage() {
             <button
               type="button"
               onClick={addPersonCard}
-              className="px-2.5 py-1 text-xs rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+              className="px-2.5 py-1.5 text-sm rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
             >
               + 인원 추가
             </button>
             <button
               type="button"
               onClick={resetCurrentDate}
-              className="px-2.5 py-1 text-xs rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+              className="px-2.5 py-1.5 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               오늘 초기화
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
           {cards.map((card, cardIndex) => (
             <section key={cardIndex} className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
               <div className="px-2 py-2 border-b border-slate-100 bg-slate-50 flex items-center gap-1">
@@ -202,7 +258,7 @@ export default function HomePage() {
                       value={card.name}
                       onChange={(e) => updateCard(cardIndex, { name: e.target.value })}
                       placeholder={`이름 ${cardIndex + 1}`}
-                      className="flex-1 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1 outline-none focus:border-indigo-400"
+                      className="flex-1 text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1.5 outline-none focus:border-indigo-400"
                     />
                     <button
                       type="button"
@@ -210,25 +266,25 @@ export default function HomePage() {
                         setEditingNameIndex(null)
                         void saveToDb(cards, selectedDate)
                       }}
-                      className="px-1.5 py-1 text-[10px] rounded border border-slate-200 text-slate-600"
+                      className="px-1.5 py-1 text-xs rounded border border-slate-200 text-slate-600"
                     >
                       완료
                     </button>
                   </>
                 ) : (
                   <>
-                    <p className="flex-1 text-xs font-semibold text-slate-800 truncate">{card.name || `이름 ${cardIndex + 1}`}</p>
+                    <p className="flex-1 text-sm font-semibold text-slate-800 truncate">{card.name || `이름 ${cardIndex + 1}`}</p>
                     <button
                       type="button"
                       onClick={() => setEditingNameIndex(cardIndex)}
-                      className="px-1.5 py-1 text-[10px] rounded border border-slate-200 text-slate-600"
+                      className="px-1.5 py-1 text-xs rounded border border-slate-200 text-slate-600"
                     >
                       수정
                     </button>
                     <button
                       type="button"
                       onClick={() => updateCard(cardIndex, { name: '' })}
-                      className="px-1.5 py-1 text-[10px] rounded border border-red-200 text-red-500"
+                      className="px-1.5 py-1 text-xs rounded border border-red-200 text-red-500"
                     >
                       삭제
                     </button>
@@ -242,30 +298,47 @@ export default function HomePage() {
 
                   if (isLunch) {
                     return (
-                      <div key={row.time} className="relative h-7">
+                      <div key={row.time} className="relative h-8">
                         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t-[3px] border-slate-300" />
-                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 px-1 text-[10px] text-slate-500 bg-white tabular-nums">
-                          {row.time}
+                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 px-1 text-xs text-slate-600 bg-white">
+                          {displayHour(row.time)}
                         </span>
                       </div>
                     )
                   }
 
+                  const isExtended = Boolean(row.extended)
+                  const isNextExtended = Boolean(card.rows[rowIndex + 1]?.extended)
+                  const displayValue = isExtended && rowIndex > 0 ? card.rows[rowIndex - 1].content : row.content
+
                   return (
-                    <div key={row.time} className="px-1.5 py-0.5 grid grid-cols-[42px_1fr_18px] items-center gap-1">
-                      <span className="text-[10px] text-slate-500 tabular-nums">{row.time}</span>
+                    <div key={row.time} className="px-1.5 py-0.5 grid grid-cols-[34px_1fr_36px] items-center gap-1">
+                      <span className="text-xs text-slate-600">{displayHour(row.time)}</span>
                       <input
-                        value={row.content}
-                        onChange={(e) => updateRow(cardIndex, rowIndex, { content: e.target.value })}
+                        value={displayValue}
+                        onChange={(e) => updateRowContent(cardIndex, rowIndex, e.target.value)}
+                        disabled={isExtended}
                         placeholder="클릭 입력"
-                        className="h-6 text-[11px] rounded-md border border-slate-200 px-1.5 outline-none focus:border-indigo-400"
+                        className={`h-8 text-sm border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
+                          isExtended
+                            ? 'rounded-t-none border-t-0 bg-slate-50 text-slate-500'
+                            : isNextExtended
+                              ? 'rounded-t-md rounded-b-none'
+                              : 'rounded-md'
+                        }`}
                       />
-                      <input
-                        type="checkbox"
-                        checked={row.done}
-                        onChange={(e) => updateRow(cardIndex, rowIndex, { done: e.target.checked })}
-                        className="w-3.5 h-3.5 accent-indigo-500"
-                      />
+                      <button
+                        type="button"
+                        disabled={rowIndex === 0}
+                        onClick={() => toggleExtend(cardIndex, rowIndex)}
+                        className={`h-8 text-[11px] rounded-md border ${
+                          row.extended
+                            ? 'bg-indigo-500 text-white border-indigo-500'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        } disabled:opacity-40`}
+                      >
+                        연장
+                      </button>
                     </div>
                   )
                 })}
@@ -279,7 +352,7 @@ export default function HomePage() {
                       type="button"
                       onClick={() => void saveToDb(cards, selectedDate, `카드 ${cardIndex + 1} 저장 완료`)}
                       disabled={saving || loading}
-                      className={`px-2 py-1 text-[10px] rounded border disabled:opacity-50 ${
+                      className={`px-2 py-1 text-xs rounded border disabled:opacity-50 ${
                         synced
                           ? 'bg-emerald-500 text-white border-emerald-500'
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
