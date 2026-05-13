@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { sendSMS } from '@/lib/sms'
 import { NextResponse } from 'next/server'
 
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const { phone } = await req.json()
   if (!phone) return NextResponse.json({ error: '전화번호 필요' }, { status: 400 })
 
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const { data: profile } = await supabase.from('profiles').select('id, email').eq('phone', phone).single()
   if (!profile) return NextResponse.json({ error: '해당 전화번호로 가입된 계정이 없습니다.' }, { status: 404 })
 

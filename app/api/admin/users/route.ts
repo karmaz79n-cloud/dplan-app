@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserRole, isAdminOrAbove } from '@/lib/role'
 import { NextResponse } from 'next/server'
 
@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const role = await getUserRole()
   if (!isAdminOrAbove(role)) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const { data } = await supabase
     .from('profiles')
     .select('id, name, email, department, phone, role, status, created_at')
@@ -28,7 +28,7 @@ export async function PATCH(req: Request) {
   const role = await getUserRole()
   if (role !== 'owner') return NextResponse.json({ error: '권한 없음' }, { status: 403 })
   const { id, newRole, name, phone } = await req.json()
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const patch: Record<string, string> = {}
   if (newRole !== undefined) patch.role = newRole
   if (name !== undefined) patch.name = name

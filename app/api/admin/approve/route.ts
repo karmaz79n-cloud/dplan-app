@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserRole, isAdminOrAbove } from '@/lib/role'
 import { sendSMS } from '@/lib/sms'
 import { NextResponse } from 'next/server'
@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const role = await getUserRole()
   if (!isAdminOrAbove(role)) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const { data } = await supabase.from('profiles').select('id, name, email, department, phone, role, status, created_at').eq('status', 'pending').order('created_at')
   return NextResponse.json(data ?? [])
 }
@@ -18,7 +18,7 @@ export async function PATCH(req: Request) {
   if (!isAdminOrAbove(role)) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
 
   const { id, action, userRole, rejectReason } = await req.json()
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
 
   if (action === 'approve') {
     await supabase.from('profiles').update({ status: 'approved', role: userRole || 'user' }).eq('id', id)
