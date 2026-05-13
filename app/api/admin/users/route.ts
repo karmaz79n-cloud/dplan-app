@@ -1,11 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import { getUserRole } from '@/lib/role'
+import { getUserRole, isAdminOrAbove } from '@/lib/role'
 import { NextResponse } from 'next/server'
 
 // GET: 전체 사용자 목록
 export async function GET() {
   const role = await getUserRole()
-  if (!role || role === 'user') return NextResponse.json({ error: '권한 없음' }, { status: 403 })
+  if (!isAdminOrAbove(role)) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
   const supabase = await createAdminClient()
   const { data } = await supabase
     .from('profiles')

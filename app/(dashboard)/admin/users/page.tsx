@@ -25,14 +25,20 @@ type PendingEntry = {
 
 const ROLE_LABELS: Record<string, string> = {
   owner: '총책임자',
+  super_admin: '상위 관리자',
   admin: '관리자',
-  user: '일반',
+  employee: '직원',
+  sales: '영업',
+  viewer: '뷰어',
 }
 
 const ROLE_COLORS: Record<string, string> = {
   owner: 'bg-amber-100 text-amber-700',
+  super_admin: 'bg-purple-100 text-purple-700',
   admin: 'bg-indigo-100 text-indigo-700',
-  user: 'bg-slate-100 text-slate-600',
+  employee: 'bg-emerald-100 text-emerald-700',
+  sales: 'bg-sky-100 text-sky-700',
+  viewer: 'bg-slate-100 text-slate-500',
 }
 
 export default function UsersPage() {
@@ -157,8 +163,11 @@ export default function UsersPage() {
         <div className="flex flex-col gap-2 mb-4">
           {[
             { role: 'owner', label: '총책임자', perms: ['모든 기능', '사용자 권한 관리'] },
+            { role: 'super_admin', label: '상위 관리자', perms: ['관리자 기능 동일'] },
             { role: 'admin', label: '관리자', perms: ['가입 승인/거절', '사용자 조회'] },
-            { role: 'user', label: '일반', perms: ['D-Plan 조회/편집'] },
+            { role: 'employee', label: '직원', perms: ['D-Plan 조회/편집'] },
+            { role: 'sales', label: '영업', perms: ['추후 권한 부여 예정'] },
+            { role: 'viewer', label: '뷰어', perms: ['읽기 전용'] },
           ].map(g => (
             <div key={g.role} className="rounded-lg border border-slate-200 bg-white p-3">
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block mb-1.5 ${ROLE_COLORS[g.role]}`}>
@@ -286,11 +295,14 @@ export default function UsersPage() {
                       </div>
                       <p className="text-xs text-slate-400 mb-3">{p.email} · {p.phone}</p>
                       <div className="flex items-center gap-2">
-                        <select value={approveRole[p.id] || 'user'}
+                        <select value={approveRole[p.id] || 'employee'}
                           onChange={e => setApproveRole(prev => ({ ...prev, [p.id]: e.target.value }))}
                           className="text-xs px-2 py-1.5 rounded-lg border border-slate-200 outline-none cursor-pointer flex-1 bg-white">
-                          <option value="user">일반</option>
+                          <option value="super_admin">상위 관리자</option>
                           <option value="admin">관리자</option>
+                          <option value="employee">직원</option>
+                          <option value="sales">영업</option>
+                          <option value="viewer">뷰어</option>
                         </select>
                         <button type="button" onClick={() => void handleApprove(p)} disabled={saving === p.id}
                           className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-medium cursor-pointer disabled:opacity-60">승인</button>
@@ -319,11 +331,14 @@ export default function UsersPage() {
                           <td className="px-4 py-3 text-xs text-slate-500">{p.department}</td>
                           <td className="px-4 py-3 text-xs text-slate-500">{p.phone}</td>
                           <td className="px-4 py-3">
-                            <select value={approveRole[p.id] || 'user'}
+                            <select value={approveRole[p.id] || 'employee'}
                               onChange={e => setApproveRole(prev => ({ ...prev, [p.id]: e.target.value }))}
                               className="text-xs px-2 py-1 rounded border border-slate-200 outline-none cursor-pointer bg-white">
-                              <option value="user">일반</option>
+                              <option value="super_admin">상위 관리자</option>
                               <option value="admin">관리자</option>
+                              <option value="employee">직원</option>
+                              <option value="sales">영업</option>
+                              <option value="viewer">뷰어</option>
                             </select>
                           </td>
                           <td className="px-4 py-3">
