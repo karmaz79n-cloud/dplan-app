@@ -305,7 +305,7 @@ export default function HomePage() {
                         onChange={(e) => updateRowContent(cardIndex, rowIndex, e.target.value)}
                         disabled={isExtended}
                         placeholder={isExtended ? '' : '클릭 입력'}
-                        className={`h-8 text-base md:text-xs border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
+                        className={`h-8 text-base md:text-xs text-[#111111] border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
                           isExtended && isNextExtended
                             ? 'rounded-none border-t-0 border-b-0 bg-white -mt-1 -mb-1'
                             : isExtended
