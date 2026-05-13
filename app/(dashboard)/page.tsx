@@ -53,6 +53,7 @@ export default function HomePage() {
   const today = useMemo(() => toKstDateString(), [])
   const [selectedDate, setSelectedDate] = useState(today)
   const [cards, setCards] = useState<PlanCard[]>([makeCard()])
+  const [savedCards, setSavedCards] = useState<PlanCard[]>([makeCard()])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -66,16 +67,22 @@ export default function HomePage() {
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      setCards([makeCard()])
+      const fallback = [makeCard()]
+      setCards(fallback)
+      setSavedCards(fallback)
       setMessage(data.error || '조회 실패')
       setLoading(false)
       return
     }
 
     if (Array.isArray(data.cards) && data.cards.length > 0) {
-      setCards(data.cards as PlanCard[])
+      const loaded = data.cards as PlanCard[]
+      setCards(loaded)
+      setSavedCards(loaded)
     } else {
-      setCards([makeCard()])
+      const fallback = [makeCard()]
+      setCards(fallback)
+      setSavedCards(fallback)
     }
 
     setLoading(false)
@@ -95,10 +102,12 @@ export default function HomePage() {
 
     if (!res.ok) {
       setMessage(data.error || '저장 실패')
-      return
+      return false
     }
 
+    setSavedCards(JSON.parse(JSON.stringify(nextCards)) as PlanCard[])
     if (doneMessage) setMessage(doneMessage)
+    return true
   }, [])
 
   useEffect(() => {
@@ -134,6 +143,13 @@ export default function HomePage() {
   function resetCurrentDate() {
     setCards([makeCard()])
     setMessage('')
+  }
+
+  function isCardSynced(cardIndex: number) {
+    const current = cards[cardIndex]
+    const saved = savedCards[cardIndex]
+    if (!current || !saved) return false
+    return JSON.stringify(current) === JSON.stringify(saved)
   }
 
   return (
@@ -256,14 +272,23 @@ export default function HomePage() {
               </div>
 
               <div className="px-2 py-1.5 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => void saveToDb(cards, selectedDate, `카드 ${cardIndex + 1} 저장 완료`)}
-                  disabled={saving || loading}
-                  className="px-2 py-1 text-[10px] rounded border border-slate-200 text-slate-700 hover:bg-white disabled:opacity-50"
-                >
-                  {saving ? '저장중...' : `카드 ${cardIndex + 1} 저장`}
-                </button>
+                {(() => {
+                  const synced = isCardSynced(cardIndex)
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => void saveToDb(cards, selectedDate, `카드 ${cardIndex + 1} 저장 완료`)}
+                      disabled={saving || loading}
+                      className={`px-2 py-1 text-[10px] rounded border disabled:opacity-50 ${
+                        synced
+                          ? 'bg-emerald-500 text-white border-emerald-500'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {saving ? '저장중...' : synced ? `● 카드 ${cardIndex + 1} 저장됨` : `○ 카드 ${cardIndex + 1} 저장`}
+                    </button>
+                  )
+                })()}
               </div>
             </section>
           ))}
