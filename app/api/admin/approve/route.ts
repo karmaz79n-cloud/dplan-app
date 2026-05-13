@@ -21,7 +21,20 @@ export async function PATCH(req: Request) {
   const supabase = createAdminClient()
 
   if (action === 'approve') {
-    await supabase.from('profiles').update({ status: 'approved', role: userRole || 'user' }).eq('id', id)
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ status: 'approved', role: userRole || 'user' })
+      .eq('id', id)
+    if (updateError) {
+      console.error('[approve] update failed:', updateError)
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+    // 업데이트 결과 재확인 (트리거가 덮어쓰는 경우 방어)
+    const { data: updated } = await supabase.from('profiles').select('status').eq('id', id).single()
+    if (updated?.status !== 'approved') {
+      // 트리거 등으로 되돌아간 경우 강제 재설정
+      await supabase.from('profiles').update({ status: 'approved', role: userRole || 'user' }).eq('id', id)
+    }
     const { data: profile } = await supabase.from('profiles').select('phone, name').eq('id', id).single()
     if (profile?.phone) await sendSMS(profile.phone, `[D-Plan] ${profile.name}님, 가입이 승인되었습니다.`)
     return NextResponse.json({ ok: true })
