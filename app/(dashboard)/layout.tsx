@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getUserRole } from '@/lib/role'
+import { getUserRole, isAdminOrAbove } from '@/lib/role'
+import Link from 'next/link'
 import RefreshTitleButton from './RefreshTitleButton'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <RefreshTitleButton />
         <span className="text-xs text-gray-400 ml-2">일일 업무계획 · V1.00</span>
         <div className="flex-1" />
+        {isAdminOrAbove(role) && (
+          <Link
+            href="/admin/users"
+            className="text-xs px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-500 hover:bg-indigo-50 transition mr-2"
+          >
+            사용자 관리
+          </Link>
+        )}
         <span className="text-xs text-gray-400 mr-3">
           <span className="sm:hidden">{mobileUserId}</span>
           <span className="hidden sm:inline">{userId}</span>
