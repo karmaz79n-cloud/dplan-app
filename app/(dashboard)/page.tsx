@@ -55,13 +55,11 @@ export default function HomePage() {
   const [cards, setCards] = useState<PlanCard[]>([makeCard()])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
   const [message, setMessage] = useState('')
   const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null)
 
   const loadFromDb = useCallback(async (date: string) => {
     setLoading(true)
-    setHydrated(false)
     setMessage('')
 
     const res = await fetch(`/api/dplan-grid?date=${date}`)
@@ -71,7 +69,6 @@ export default function HomePage() {
       setCards([makeCard()])
       setMessage(data.error || '조회 실패')
       setLoading(false)
-      setHydrated(true)
       return
     }
 
@@ -82,10 +79,9 @@ export default function HomePage() {
     }
 
     setLoading(false)
-    setHydrated(true)
   }, [])
 
-  const saveToDb = useCallback(async (nextCards: PlanCard[], date: string, showMessage = false) => {
+  const saveToDb = useCallback(async (nextCards: PlanCard[], date: string, doneMessage?: string) => {
     setSaving(true)
 
     const res = await fetch('/api/dplan-grid', {
@@ -102,7 +98,7 @@ export default function HomePage() {
       return
     }
 
-    if (showMessage) setMessage('전체 저장 완료')
+    if (doneMessage) setMessage(doneMessage)
   }, [])
 
   useEffect(() => {
@@ -112,16 +108,6 @@ export default function HomePage() {
 
     return () => window.clearTimeout(timer)
   }, [loadFromDb, selectedDate])
-
-  useEffect(() => {
-    if (!hydrated || loading) return
-
-    const timer = window.setTimeout(() => {
-      void saveToDb(cards, selectedDate, false)
-    }, 800)
-
-    return () => window.clearTimeout(timer)
-  }, [cards, hydrated, loading, saveToDb, selectedDate])
 
   function updateCard(index: number, patch: Partial<PlanCard>) {
     setCards((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
@@ -187,14 +173,6 @@ export default function HomePage() {
             >
               오늘 초기화
             </button>
-            <button
-              type="button"
-              onClick={() => void saveToDb(cards, selectedDate, true)}
-              disabled={saving || loading}
-              className="px-2.5 py-1 text-xs rounded-md bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
-            >
-              {saving ? '저장중...' : '전체 저장'}
-            </button>
           </div>
         </div>
 
@@ -212,7 +190,10 @@ export default function HomePage() {
                     />
                     <button
                       type="button"
-                      onClick={() => setEditingNameIndex(null)}
+                      onClick={() => {
+                        setEditingNameIndex(null)
+                        void saveToDb(cards, selectedDate)
+                      }}
                       className="px-1.5 py-1 text-[10px] rounded border border-slate-200 text-slate-600"
                     >
                       완료
@@ -272,6 +253,17 @@ export default function HomePage() {
                     </div>
                   )
                 })}
+              </div>
+
+              <div className="px-2 py-1.5 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void saveToDb(cards, selectedDate, `카드 ${cardIndex + 1} 저장 완료`)}
+                  disabled={saving || loading}
+                  className="px-2 py-1 text-[10px] rounded border border-slate-200 text-slate-700 hover:bg-white disabled:opacity-50"
+                >
+                  {saving ? '저장중...' : `카드 ${cardIndex + 1} 저장`}
+                </button>
               </div>
             </section>
           ))}
