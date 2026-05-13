@@ -189,12 +189,8 @@ export default function HomePage() {
       if (prev.length <= 1) return [makeCard()]
       return prev.filter((_, i) => i !== cardIndex)
     })
-    setSavedCards((prev) => {
-      if (prev.length <= 1) return [makeCard()]
-      return prev.filter((_, i) => i !== cardIndex)
-    })
     if (editingNameIndex === cardIndex) setEditingNameIndex(null)
-    setMessage('')
+    setMessage('카드 삭제됨 · 저장 필요')
   }
 
   function addPersonCard() {
@@ -317,7 +313,12 @@ export default function HomePage() {
                   const isNextExtended = Boolean(card.rows[rowIndex + 1]?.extended)
 
                   return (
-                    <div key={row.time} className="px-1.5 py-0 grid grid-cols-[34px_1fr_36px] items-center gap-1">
+                    <div
+                      key={row.time}
+                      className={`px-1.5 grid grid-cols-[34px_1fr_36px] items-center gap-1 ${
+                        isExtended || isNextExtended ? 'py-0' : 'py-0.5'
+                      }`}
+                    >
                       <span className="text-xs text-slate-600">{displayHour(row.time)}</span>
                       <input
                         value={isExtended ? '' : row.content}
