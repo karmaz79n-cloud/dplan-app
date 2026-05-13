@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { formatPhone } from '@/lib/formatPhone'
 
 type UserEntry = {
   id: string
@@ -241,6 +242,7 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-2.5">
                         <input type="text" defaultValue={user.phone ?? ''} placeholder="전화번호"
+                          onChange={e => { e.target.value = formatPhone(e.target.value) }}
                           onBlur={e => { const v = e.target.value.trim(); if (v !== (user.phone ?? '')) void handlePhoneChange(user.id, v) }}
                           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                           className="text-xs px-2 py-1 rounded border border-slate-200 outline-none w-full focus:border-indigo-400 bg-white" />
