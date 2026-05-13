@@ -254,7 +254,7 @@ export default function HomePage() {
                       value={card.name}
                       onChange={(e) => updateCard(cardIndex, { name: e.target.value })}
                       placeholder={`이름 ${cardIndex + 1}`}
-                      className="flex-1 text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1.5 outline-none focus:border-indigo-400"
+                      className="flex-1 text-base md:text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1.5 outline-none focus:border-indigo-400"
                     />
                     <button
                       type="button"
@@ -305,7 +305,7 @@ export default function HomePage() {
                         onChange={(e) => updateRowContent(cardIndex, rowIndex, e.target.value)}
                         disabled={isExtended}
                         placeholder={isExtended ? '' : '클릭 입력'}
-                        className={`h-8 text-sm border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
+                        className={`h-8 text-base md:text-sm border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
                           isExtended && isNextExtended
                             ? 'rounded-none border-t-0 border-b-0 bg-white -mt-1 -mb-1'
                             : isExtended
