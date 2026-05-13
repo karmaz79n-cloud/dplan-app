@@ -36,7 +36,7 @@ function templateKey(userId: string) {
 function toTemplateCards(cards: PlanCard[]): PlanCard[] {
   return cards.map((card) => ({
     name: card.name,
-    rows: card.rows.map((r) => ({ time: r.time, content: '', done: false, extended: Boolean(r.extended) })),
+    rows: card.rows.map((r) => ({ time: r.time, content: '', done: false, extended: false })),
   }))
 }
 

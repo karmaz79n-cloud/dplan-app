@@ -247,14 +247,14 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
           {cards.map((card, cardIndex) => (
             <section key={cardIndex} className="bg-white border border-slate-300 ring-1 ring-slate-200 rounded-lg shadow-md overflow-hidden">
-              <div className="px-2 py-2 border-b border-slate-100 bg-slate-50 flex items-center gap-1">
+              <div className="px-2 py-2 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50/70 flex items-center gap-1">
                 {editingNameIndex === cardIndex ? (
                   <>
                     <input
                       value={card.name}
                       onChange={(e) => updateCard(cardIndex, { name: e.target.value })}
                       placeholder={`이름 ${cardIndex + 1}`}
-                      className="flex-1 text-base md:text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1.5 outline-none focus:border-indigo-400"
+                      className="flex-1 text-base md:text-sm font-semibold text-slate-800 bg-white/95 border border-indigo-100 rounded-md px-2 py-1.5 outline-none focus:border-indigo-400"
                     />
                     <button
                       type="button"
@@ -269,7 +269,7 @@ export default function HomePage() {
                   </>
                 ) : (
                   <>
-                    <p className="flex-1 text-sm font-semibold text-slate-800 truncate">{card.name || `이름 ${cardIndex + 1}`}</p>
+                    <p className="flex-1 text-sm font-semibold text-slate-800 truncate bg-indigo-100/70 rounded-md px-2 py-1">{card.name || `이름 ${cardIndex + 1}`}</p>
                     <button
                       type="button"
                       onClick={() => setEditingNameIndex(cardIndex)}
@@ -311,8 +311,8 @@ export default function HomePage() {
                             : isExtended
                               ? 'rounded-t-none rounded-b-md border-t-0 bg-white -mt-1'
                               : isNextExtended
-                                ? `${isEmpty ? 'bg-red-50' : 'bg-white'} rounded-t-md rounded-b-none border-b-0 -mb-1`
-                                : `${isEmpty ? 'bg-red-50' : 'bg-white'} rounded-md`
+                                ? `${isEmpty ? 'bg-rose-100' : 'bg-white'} rounded-t-md rounded-b-none border-b-0 -mb-1`
+                                : `${isEmpty ? 'bg-rose-100' : 'bg-white'} rounded-md`
                         }`}
                       />
                       <button
