@@ -196,12 +196,11 @@ export default function HomePage() {
   }
 
   function addPersonCard() {
-    setCards((prev) => [...prev, makeCard()])
-    setMessage('')
-  }
-
-  function resetCurrentDate() {
-    setCards([makeCard()])
+    setCards((prev) => {
+      const nextCards = [...prev, makeCard()]
+      void saveToDb(nextCards, selectedDate, '인원 추가 저장 완료')
+      return nextCards
+    })
     setMessage('')
   }
 
@@ -241,13 +240,6 @@ export default function HomePage() {
               className="px-2.5 py-1.5 text-sm rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
             >
               + 인원 추가
-            </button>
-            <button
-              type="button"
-              onClick={resetCurrentDate}
-              className="px-2.5 py-1.5 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
-            >
-              오늘 초기화
             </button>
           </div>
         </div>
