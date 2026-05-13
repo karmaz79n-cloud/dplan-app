@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient, createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 type Row = { time: string; content: string; done: boolean; extended?: boolean }
 type PlanCard = { name: string; rows: Row[] }
@@ -69,7 +70,7 @@ export async function GET(req: Request) {
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
 
-  const admin = await createAdminClient()
+  const admin = createAdminClient()
   const userId = auth.user.id
 
   const { data: dailyRow, error: dailyError } = await admin
@@ -119,7 +120,7 @@ export async function PUT(req: Request) {
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
 
-  const admin = await createAdminClient()
+  const admin = createAdminClient()
   const userId = auth.user.id
 
   const payloads = [
