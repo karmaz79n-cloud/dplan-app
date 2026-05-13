@@ -186,11 +186,11 @@ export default function HomePage() {
 
   function deleteCard(cardIndex: number) {
     setCards((prev) => {
-      if (prev.length <= 1) return [makeCard()]
-      return prev.filter((_, i) => i !== cardIndex)
+      const nextCards = prev.length <= 1 ? [makeCard()] : prev.filter((_, i) => i !== cardIndex)
+      void saveToDb(nextCards, selectedDate, '카드 삭제 저장 완료')
+      return nextCards
     })
     if (editingNameIndex === cardIndex) setEditingNameIndex(null)
-    setMessage('카드 삭제됨 · 저장 필요')
   }
 
   function addPersonCard() {
@@ -315,9 +315,7 @@ export default function HomePage() {
                   return (
                     <div
                       key={row.time}
-                      className={`px-1.5 grid grid-cols-[34px_1fr_36px] items-center gap-1 ${
-                        isExtended || isNextExtended ? 'py-0' : 'py-0.5'
-                      }`}
+                      className="px-1.5 py-0.5 grid grid-cols-[34px_1fr_36px] items-center gap-1"
                     >
                       <span className="text-xs text-slate-600">{displayHour(row.time)}</span>
                       <input
@@ -327,11 +325,11 @@ export default function HomePage() {
                         placeholder={isExtended ? '' : '클릭 입력'}
                         className={`h-8 text-sm border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
                           isExtended && isNextExtended
-                            ? 'rounded-none border-t-0 border-b-0 bg-white'
+                            ? 'rounded-none border-t-0 border-b-0 bg-white -mt-1 -mb-1'
                             : isExtended
-                              ? 'rounded-t-none rounded-b-md border-t-0 bg-white'
+                              ? 'rounded-t-none rounded-b-md border-t-0 bg-white -mt-1'
                               : isNextExtended
-                                ? 'rounded-t-md rounded-b-none border-b-0'
+                                ? 'rounded-t-md rounded-b-none border-b-0 -mb-1'
                                 : 'rounded-md'
                         }`}
                       />
