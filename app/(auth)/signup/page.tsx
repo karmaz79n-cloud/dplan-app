@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { formatPhone } from '@/lib/formatPhone'
 
 export default function SignupPage() {
   const [form, setForm] = useState({ name: '', department: '', phone: '', email: '', password: '', confirm: '' })
@@ -48,7 +49,7 @@ export default function SignupPage() {
             required className="w-full px-4 py-2.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-indigo-400" />
           <input placeholder="소속 (팀/부서)" value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
             required className="w-full px-4 py-2.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-indigo-400" />
-          <input type="tel" placeholder="전화번호 (예: 01012345678)" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+          <input type="tel" placeholder="전화번호 (예: 010-1234-5678)" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: formatPhone(e.target.value) }))}
             required className="w-full px-4 py-2.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-indigo-400" />
           <input type="email" placeholder="이메일" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
             required className="w-full px-4 py-2.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-indigo-400" />
