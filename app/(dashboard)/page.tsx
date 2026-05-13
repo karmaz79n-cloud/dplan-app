@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type DailyPlan = {
@@ -12,16 +12,42 @@ type DailyPlan = {
   is_done: boolean
 }
 
-function toKstDateString(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
+type SlotRow = {
+  slot: string
+  end: string
+  id: string | null
+  content: string
+  is_done: boolean
+}
+
+const TIME_SLOTS = [
+  '09:00', '10:00', '11:00', '12:00', '13:00',
+  '14:00', '15:00', '16:00', '17:00', '18:00',
+]
+
+function toKstDateString() {
+  const now = new Date()
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000
+  const kst = new Date(utc + 9 * 60 * 60000)
+  const y = kst.getFullYear()
+  const m = String(kst.getMonth() + 1).padStart(2, '0')
+  const d = String(kst.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
 
-function displayDate(dateStr: string) {
-  const [y, m, d] = dateStr.split('-')
+function fmtDate(date: string) {
+  const [y, m, d] = date.split('-')
   return `${y}.${m}.${d}`
+}
+
+function defaultRows(): SlotRow[] {
+  return TIME_SLOTS.map((slot, idx) => ({
+    slot,
+    end: TIME_SLOTS[idx + 1] ?? '19:00',
+    id: null,
+    content: '',
+    is_done: false,
+  }))
 }
 
 export default function HomePage() {
@@ -31,43 +57,22 @@ export default function HomePage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [department, setDepartment] = useState('')
-
-  const [rows, setRows] = useState<DailyPlan[]>([])
-  const [newStart, setNewStart] = useState('09:00')
-  const [newEnd, setNewEnd] = useState('10:00')
-  const [newContent, setNewContent] = useState('')
+  const [rows, setRows] = useState<SlotRow[]>(defaultRows)
+  const [activeCell, setActiveCell] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  const loadTodayPlans = useCallback(async (uid: string) => {
-    const { data, error } = await supabase
-      .from('daily_plans')
-      .select('id, plan_date, start_time, end_time, content, is_done')
-      .eq('user_id', uid)
-      .eq('plan_date', today)
-      .order('start_time', { ascending: true })
-
-    if (error) throw error
-    setRows((data ?? []) as DailyPlan[])
-  }, [supabase, today])
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     async function init() {
       setLoading(true)
-      setError('')
+      setMessage('')
 
-      const { data: authData, error: authError } = await supabase.auth.getUser()
-      if (authError) {
-        setError('사용자 정보를 불러오지 못했습니다.')
-        setLoading(false)
-        return
-      }
-
+      const { data: authData } = await supabase.auth.getUser()
       const user = authData.user
       if (!user) {
-        setError('로그인 정보가 없습니다.')
+        setMessage('로그인 정보가 없습니다.')
         setLoading(false)
         return
       }
@@ -83,84 +88,104 @@ export default function HomePage() {
       setName(profile?.name ?? user.email ?? '')
       setDepartment(profile?.department ?? '')
 
-      try {
-        await loadTodayPlans(user.id)
-      } catch {
-        setError('오늘 업무계획을 불러오지 못했습니다.')
-      } finally {
-        setLoading(false)
-      }
+      const { data: plans } = await supabase
+        .from('daily_plans')
+        .select('id, plan_date, start_time, end_time, content, is_done')
+        .eq('user_id', user.id)
+        .eq('plan_date', today)
+
+      const map = new Map<string, DailyPlan>()
+      ;(plans ?? []).forEach((p) => {
+        if (p.start_time) map.set(p.start_time.slice(0, 5), p as DailyPlan)
+      })
+
+      setRows(
+        defaultRows().map((r) => {
+          const found = map.get(r.slot)
+          return found
+            ? {
+                slot: r.slot,
+                end: r.end,
+                id: found.id,
+                content: found.content ?? '',
+                is_done: found.is_done ?? false,
+              }
+            : r
+        }),
+      )
+
+      setLoading(false)
     }
 
     init()
-  }, [supabase, loadTodayPlans])
+  }, [supabase, today])
 
-  async function addPlan() {
+  function patchRow(slot: string, patch: Partial<SlotRow>) {
+    setRows((prev) => prev.map((r) => (r.slot === slot ? { ...r, ...patch } : r)))
+  }
+
+  async function saveAll() {
     if (!userId) return
-    if (!newContent.trim()) {
-      setError('업무내용을 입력해 주세요.')
-      return
+    setSaving(true)
+    setMessage('')
+
+    const toInsert = rows.filter((r) => !r.id && r.content.trim())
+    const toUpdate = rows.filter((r) => r.id && r.content.trim())
+    const toDelete = rows.filter((r) => r.id && !r.content.trim())
+
+    if (toDelete.length) {
+      const ids = toDelete.map((r) => r.id!)
+      await supabase.from('daily_plans').delete().in('id', ids)
     }
 
-    setSaving(true)
-    setError('')
+    for (const r of toUpdate) {
+      await supabase
+        .from('daily_plans')
+        .update({ content: r.content.trim(), is_done: r.is_done, end_time: r.end })
+        .eq('id', r.id)
+    }
 
-    const { error } = await supabase.from('daily_plans').insert({
-      user_id: userId,
-      plan_date: today,
-      start_time: newStart,
-      end_time: newEnd,
-      content: newContent.trim(),
-      is_done: false,
+    if (toInsert.length) {
+      await supabase.from('daily_plans').insert(
+        toInsert.map((r) => ({
+          user_id: userId,
+          plan_date: today,
+          start_time: r.slot,
+          end_time: r.end,
+          content: r.content.trim(),
+          is_done: r.is_done,
+        })),
+      )
+    }
+
+    const { data: refreshed } = await supabase
+      .from('daily_plans')
+      .select('id, start_time, end_time, content, is_done')
+      .eq('user_id', userId)
+      .eq('plan_date', today)
+
+    const map = new Map<string, DailyPlan>()
+    ;(refreshed ?? []).forEach((p) => {
+      if (p.start_time) map.set(p.start_time.slice(0, 5), p as DailyPlan)
     })
 
-    if (error) {
-      setError('업무 추가에 실패했습니다.')
-      setSaving(false)
-      return
-    }
-
-    setNewContent('')
-    await loadTodayPlans(userId)
-    setSaving(false)
-  }
-
-  function patchRow(id: string, patch: Partial<DailyPlan>) {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
-  }
-
-  async function saveRow(row: DailyPlan) {
-    setSaving(true)
-    setError('')
-
-    const { error } = await supabase
-      .from('daily_plans')
-      .update({
-        start_time: row.start_time,
-        end_time: row.end_time,
-        content: row.content,
-        is_done: row.is_done,
-      })
-      .eq('id', row.id)
+    setRows(
+      defaultRows().map((r) => {
+        const found = map.get(r.slot)
+        return found
+          ? {
+              slot: r.slot,
+              end: r.end,
+              id: found.id,
+              content: found.content ?? '',
+              is_done: found.is_done ?? false,
+            }
+          : r
+      }),
+    )
 
     setSaving(false)
-    if (error) setError('업무 수정에 실패했습니다.')
-  }
-
-  async function removeRow(id: string) {
-    setSaving(true)
-    setError('')
-
-    const { error } = await supabase.from('daily_plans').delete().eq('id', id)
-
-    if (error) {
-      setSaving(false)
-      setError('업무 삭제에 실패했습니다.')
-      return
-    }
-
-    setRows((prev) => prev.filter((r) => r.id !== id))
-    setSaving(false)
+    setMessage('저장되었습니다.')
   }
 
   return (
@@ -168,127 +193,87 @@ export default function HomePage() {
       <div className="max-w-6xl mx-auto space-y-4">
         <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-lg font-bold text-gray-800 mb-1">안녕하세요, {name}님</h2>
-          <p className="text-sm text-gray-500">{department ? `${department} · ` : ''}오늘의 업무계획 ({displayDate(today)})</p>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">업무 추가</h3>
-          <div className="grid grid-cols-1 md:grid-cols-[120px_120px_1fr_auto] gap-2">
-            <input
-              type="time"
-              value={newStart}
-              onChange={(e) => setNewStart(e.target.value)}
-              className="px-3 py-2 text-sm rounded-lg border border-gray-200 outline-none focus:border-indigo-400"
-            />
-            <input
-              type="time"
-              value={newEnd}
-              onChange={(e) => setNewEnd(e.target.value)}
-              className="px-3 py-2 text-sm rounded-lg border border-gray-200 outline-none focus:border-indigo-400"
-            />
-            <input
-              type="text"
-              placeholder="업무내용 입력"
-              value={newContent}
-              onChange={(e) => setNewContent(e.target.value)}
-              className="px-3 py-2 text-sm rounded-lg border border-gray-200 outline-none focus:border-indigo-400"
-            />
-            <button
-              type="button"
-              onClick={addPlan}
-              disabled={saving}
-              className="px-4 py-2 text-sm rounded-lg bg-indigo-500 text-white font-semibold hover:bg-indigo-600 disabled:opacity-50"
-            >
-              추가
-            </button>
-          </div>
+          <p className="text-sm text-gray-500">{department ? `${department} · ` : ''}오늘의 업무계획 ({fmtDate(today)})</p>
         </section>
 
         <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
+          <div className="overflow-x-auto max-h-[72vh]">
+            <table className="w-full min-w-[900px] border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200 text-slate-700">
                   <th className="px-4 py-3 text-left font-semibold">일자</th>
                   <th className="px-4 py-3 text-left font-semibold">시간</th>
                   <th className="px-4 py-3 text-left font-semibold">업무내용</th>
                   <th className="px-4 py-3 text-center font-semibold">완료</th>
-                  <th className="px-4 py-3 text-center font-semibold">비고</th>
+                  <th className="px-4 py-3 text-left font-semibold">비고</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">불러오는 중입니다...</td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">등록된 업무가 없습니다.</td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400">불러오는 중입니다...</td>
                   </tr>
                 ) : (
-                  rows.map((row) => (
-                    <tr key={row.id} className="border-t border-gray-100 align-top">
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{displayDate(row.plan_date)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 whitespace-nowrap">
+                  rows.map((r, idx) => (
+                    <tr key={r.slot} className="border-t border-slate-200 hover:bg-sky-50/40">
+                      {idx === 0 && (
+                        <td rowSpan={rows.length} className="px-4 py-3 text-center font-semibold text-slate-700 bg-sky-50 border-r border-slate-200 align-top">
+                          {fmtDate(today)}
+                        </td>
+                      )}
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-700 font-medium">{r.slot}</td>
+                      <td className="px-4 py-2">
+                        {activeCell === r.slot ? (
                           <input
-                            type="time"
-                            value={row.start_time ?? ''}
-                            onChange={(e) => patchRow(row.id, { start_time: e.target.value || null })}
-                            className="px-2 py-1 rounded-md border border-gray-200 outline-none focus:border-indigo-400"
+                            autoFocus
+                            value={r.content}
+                            onChange={(e) => patchRow(r.slot, { content: e.target.value })}
+                            onBlur={() => setActiveCell(null)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') setActiveCell(null)
+                            }}
+                            className="w-full rounded-md border border-indigo-300 px-3 py-2 outline-none"
+                            placeholder="클릭해서 입력"
                           />
-                          <span className="text-gray-400">~</span>
-                          <input
-                            type="time"
-                            value={row.end_time ?? ''}
-                            onChange={(e) => patchRow(row.id, { end_time: e.target.value || null })}
-                            className="px-2 py-1 rounded-md border border-gray-200 outline-none focus:border-indigo-400"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="text"
-                          value={row.content}
-                          onChange={(e) => patchRow(row.id, { content: e.target.value })}
-                          className="w-full px-3 py-2 rounded-md border border-gray-200 outline-none focus:border-indigo-400"
-                        />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveCell(r.slot)}
+                            className="w-full min-h-10 text-left rounded-md border border-transparent hover:border-slate-200 px-2 py-2 text-slate-800"
+                          >
+                            {r.content || <span className="text-slate-400">클릭해서 입력</span>}
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <input
                           type="checkbox"
-                          checked={row.is_done}
-                          onChange={(e) => patchRow(row.id, { is_done: e.target.checked })}
+                          checked={r.is_done}
+                          onChange={(e) => patchRow(r.slot, { is_done: e.target.checked })}
                           className="w-4 h-4 accent-indigo-500"
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => saveRow(row)}
-                            disabled={saving || !row.content.trim()}
-                            className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                          >
-                            저장
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeRow(row.id)}
-                            disabled={saving}
-                            className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </td>
+                      <td className="px-4 py-3 text-slate-500">{r.is_done ? '완료' : r.content ? '진행/예정' : '-'}</td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
-          {error && <p className="px-4 py-3 text-xs text-red-500 border-t border-gray-100">{error}</p>}
+
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-slate-200 bg-slate-50/60">
+            <p className="text-xs text-slate-500">빈 칸은 저장 시 자동으로 미등록 상태를 유지합니다.</p>
+            <button
+              type="button"
+              onClick={saveAll}
+              disabled={loading || saving}
+              className="px-4 py-2 text-sm rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50"
+            >
+              {saving ? '저장 중...' : '일괄 저장'}
+            </button>
+          </div>
+
+          {message && <p className="px-4 py-3 text-xs text-indigo-600 border-t border-slate-100">{message}</p>}
         </section>
       </div>
     </div>
