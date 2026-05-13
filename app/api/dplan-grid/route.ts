@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 
-type Row = { time: string; content: string; done: boolean }
+type Row = { time: string; content: string; done: boolean; extended?: boolean }
 type PlanCard = { name: string; rows: Row[] }
+type TemplatePayload = { effectiveDate: string; cards: PlanCard[] }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -12,7 +13,15 @@ function isValidCards(input: unknown): input is PlanCard[] {
     if (!card || typeof card !== 'object') return false
     const c = card as PlanCard
     if (typeof c.name !== 'string' || !Array.isArray(c.rows)) return false
-    return c.rows.every((r) => r && typeof r.time === 'string' && typeof r.content === 'string' && typeof r.done === 'boolean')
+    return c.rows.every((r) => {
+      return (
+        r &&
+        typeof r.time === 'string' &&
+        typeof r.content === 'string' &&
+        typeof r.done === 'boolean' &&
+        (typeof r.extended === 'undefined' || typeof r.extended === 'boolean')
+      )
+    })
   })
 }
 
@@ -27,8 +36,28 @@ function templateKey(userId: string) {
 function toTemplateCards(cards: PlanCard[]): PlanCard[] {
   return cards.map((card) => ({
     name: card.name,
-    rows: card.rows.map((r) => ({ time: r.time, content: '', done: false })),
+    rows: card.rows.map((r) => ({ time: r.time, content: '', done: false, extended: Boolean(r.extended) })),
   }))
+}
+
+function parseTemplateValue(rawValue: string): TemplatePayload | null {
+  try {
+    const parsed = JSON.parse(rawValue)
+
+    // legacy format: cards array only
+    if (isValidCards(parsed)) {
+      return { effectiveDate: '0000-01-01', cards: parsed }
+    }
+
+    if (!parsed || typeof parsed !== 'object') return null
+    const effectiveDate = (parsed as TemplatePayload).effectiveDate
+    const cards = (parsed as TemplatePayload).cards
+
+    if (!DATE_RE.test(effectiveDate) || !isValidCards(cards)) return null
+    return { effectiveDate, cards }
+  } catch {
+    return null
+  }
 }
 
 export async function GET(req: Request) {
@@ -67,16 +96,15 @@ export async function GET(req: Request) {
     .maybeSingle()
 
   if (templateError) return NextResponse.json({ error: '조회 실패' }, { status: 500 })
-
   if (!templateRow?.value) return NextResponse.json({ cards: null })
 
-  try {
-    const templateCards = JSON.parse(templateRow.value)
-    if (!isValidCards(templateCards)) return NextResponse.json({ cards: null })
-    return NextResponse.json({ cards: toTemplateCards(templateCards) })
-  } catch {
-    return NextResponse.json({ cards: null })
-  }
+  const template = parseTemplateValue(templateRow.value)
+  if (!template) return NextResponse.json({ cards: null })
+
+  // template changes are applied only from effectiveDate forward
+  if (date < template.effectiveDate) return NextResponse.json({ cards: null })
+
+  return NextResponse.json({ cards: toTemplateCards(template.cards) })
 }
 
 export async function PUT(req: Request) {
@@ -96,7 +124,10 @@ export async function PUT(req: Request) {
 
   const payloads = [
     { key: gridKey(userId, date), value: JSON.stringify(cards) },
-    { key: templateKey(userId), value: JSON.stringify(toTemplateCards(cards)) },
+    {
+      key: templateKey(userId),
+      value: JSON.stringify({ effectiveDate: date, cards: toTemplateCards(cards) }),
+    },
   ]
 
   const { error } = await admin.from('app_settings').upsert(payloads, { onConflict: 'key' })
