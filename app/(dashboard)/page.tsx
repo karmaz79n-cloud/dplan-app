@@ -158,11 +158,6 @@ export default function HomePage() {
         const rows = c.rows.map((r) => ({ ...r }))
         rows[rowIndex] = { ...rows[rowIndex], content }
 
-        for (let k = rowIndex + 1; k < rows.length; k += 1) {
-          if (!rows[k].extended) break
-          rows[k] = { ...rows[k], content }
-        }
-
         return { ...c, rows }
       }),
     )
@@ -176,19 +171,28 @@ export default function HomePage() {
         if (i !== cardIndex) return c
 
         const rows = c.rows.map((r) => ({ ...r }))
-        const before = rows[rowIndex - 1]
         const current = rows[rowIndex]
-        const nextExtended = !current.extended
-
         rows[rowIndex] = {
           ...current,
-          extended: nextExtended,
-          content: nextExtended ? before.content : current.content,
+          extended: !current.extended,
         }
 
         return { ...c, rows }
       }),
     )
+  }
+
+  function deleteCard(cardIndex: number) {
+    setCards((prev) => {
+      if (prev.length <= 1) return [makeCard()]
+      return prev.filter((_, i) => i !== cardIndex)
+    })
+    setSavedCards((prev) => {
+      if (prev.length <= 1) return [makeCard()]
+      return prev.filter((_, i) => i !== cardIndex)
+    })
+    if (editingNameIndex === cardIndex) setEditingNameIndex(null)
+    setMessage('')
   }
 
   function addPersonCard() {
@@ -283,10 +287,10 @@ export default function HomePage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => updateCard(cardIndex, { name: '' })}
+                      onClick={() => deleteCard(cardIndex)}
                       className="px-1.5 py-1 text-xs rounded border border-red-200 text-red-500"
                     >
-                      삭제
+                      카드삭제
                     </button>
                   </>
                 )}
@@ -309,19 +313,18 @@ export default function HomePage() {
 
                   const isExtended = Boolean(row.extended)
                   const isNextExtended = Boolean(card.rows[rowIndex + 1]?.extended)
-                  const displayValue = isExtended && rowIndex > 0 ? card.rows[rowIndex - 1].content : row.content
 
                   return (
-                    <div key={row.time} className="px-1.5 py-0.5 grid grid-cols-[34px_1fr_36px] items-center gap-1">
+                    <div key={row.time} className="px-1.5 py-0 grid grid-cols-[34px_1fr_36px] items-center gap-1">
                       <span className="text-xs text-slate-600">{displayHour(row.time)}</span>
                       <input
-                        value={displayValue}
+                        value={row.content}
                         onChange={(e) => updateRowContent(cardIndex, rowIndex, e.target.value)}
                         disabled={isExtended}
                         placeholder="클릭 입력"
                         className={`h-8 text-sm border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
                           isExtended
-                            ? 'rounded-t-none border-t-0 bg-slate-50 text-slate-500'
+                            ? 'rounded-t-none rounded-b-md border-t-0 bg-white text-slate-700'
                             : isNextExtended
                               ? 'rounded-t-md rounded-b-none'
                               : 'rounded-md'
