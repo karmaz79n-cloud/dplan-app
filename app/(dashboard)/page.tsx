@@ -346,7 +346,7 @@ export default function HomePage() {
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                       }`}
                     >
-                      {saving ? '저장중...' : synced ? `● 카드 ${cardIndex + 1} 저장됨` : `○ 카드 ${cardIndex + 1} 저장`}
+                      {saving ? '저장중...' : synced ? `● 카드 ${cardIndex + 1} 저장됨` : `○ 카드 ${cardIndex + 1} 저장 필요`}
                     </button>
                   )
                 })()}
