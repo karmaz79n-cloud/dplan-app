@@ -14,8 +14,7 @@ type PlanCard = {
   rows: Row[]
 }
 
-const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
-const LUNCH_TIME = '12:00'
+const TIME_SLOTS = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
 
 function toKstDateString() {
   const now = new Date()
@@ -296,19 +295,6 @@ export default function HomePage() {
 
               <div className="py-1.5">
                 {card.rows.map((row, rowIndex) => {
-                  const isLunch = row.time === LUNCH_TIME
-
-                  if (isLunch) {
-                    return (
-                      <div key={row.time} className="relative h-8">
-                        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t-[3px] border-slate-300" />
-                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 px-1 text-xs text-slate-600 bg-white">
-                          {displayHour(row.time)}
-                        </span>
-                      </div>
-                    )
-                  }
-
                   const isExtended = Boolean(row.extended)
                   const isNextExtended = Boolean(card.rows[rowIndex + 1]?.extended)
 
