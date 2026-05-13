@@ -249,7 +249,7 @@ export default function HomePage() {
             <section key={cardIndex} className="bg-white border border-slate-300 ring-1 ring-slate-200 rounded-lg shadow-md overflow-hidden">
               <div className="px-2 py-2 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50/70 flex items-center gap-1">
                 {editingNameIndex === cardIndex ? (
-                  <>
+                  <div className="w-full flex items-center gap-1 bg-indigo-100/80 rounded-md px-1.5 py-1">
                     <input
                       value={card.name}
                       onChange={(e) => updateCard(cardIndex, { name: e.target.value })}
@@ -262,29 +262,29 @@ export default function HomePage() {
                         setEditingNameIndex(null)
                         void saveToDb(cards, selectedDate)
                       }}
-                      className="px-1.5 py-1 text-xs rounded border border-slate-200 text-slate-600"
+                      className="px-1.5 py-1 text-xs rounded border border-slate-200 text-slate-600 bg-white"
                     >
                       완료
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <p className="flex-1 text-sm font-semibold text-slate-800 truncate bg-indigo-100/70 rounded-md px-2 py-1">{card.name || `이름 ${cardIndex + 1}`}</p>
+                  <div className="w-full flex items-center gap-1 bg-indigo-100/80 rounded-md px-1.5 py-1">
+                    <p className="flex-1 text-sm font-semibold text-slate-800 truncate px-1">{card.name || `이름 ${cardIndex + 1}`}</p>
                     <button
                       type="button"
                       onClick={() => setEditingNameIndex(cardIndex)}
-                      className="px-1.5 py-1 text-xs rounded border border-slate-200 text-slate-600"
+                      className="px-1.5 py-1 text-xs rounded border border-slate-200 text-slate-600 bg-white"
                     >
                       수정
                     </button>
                     <button
                       type="button"
                       onClick={() => deleteCard(cardIndex)}
-                      className="px-1.5 py-1 text-xs rounded border border-red-200 text-red-500"
+                      className="px-1.5 py-1 text-xs rounded border border-red-200 text-red-500 bg-white"
                     >
                       카드삭제
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
 
