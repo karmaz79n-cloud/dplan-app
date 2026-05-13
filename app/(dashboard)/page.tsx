@@ -246,7 +246,7 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
           {cards.map((card, cardIndex) => (
-            <section key={cardIndex} className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+            <section key={cardIndex} className="bg-white border border-slate-300 ring-1 ring-slate-200 rounded-lg shadow-md overflow-hidden">
               <div className="px-2 py-2 border-b border-slate-100 bg-slate-50 flex items-center gap-1">
                 {editingNameIndex === cardIndex ? (
                   <>
@@ -292,6 +292,7 @@ export default function HomePage() {
                 {card.rows.map((row, rowIndex) => {
                   const isExtended = Boolean(row.extended)
                   const isNextExtended = Boolean(card.rows[rowIndex + 1]?.extended)
+                  const isEmpty = !isExtended && row.content.trim() === ''
 
                   return (
                     <div
@@ -310,8 +311,8 @@ export default function HomePage() {
                             : isExtended
                               ? 'rounded-t-none rounded-b-md border-t-0 bg-white -mt-1'
                               : isNextExtended
-                                ? 'rounded-t-md rounded-b-none border-b-0 -mb-1'
-                                : 'rounded-md'
+                                ? `${isEmpty ? 'bg-red-50' : 'bg-white'} rounded-t-md rounded-b-none border-b-0 -mb-1`
+                                : `${isEmpty ? 'bg-red-50' : 'bg-white'} rounded-md`
                         }`}
                       />
                       <button
