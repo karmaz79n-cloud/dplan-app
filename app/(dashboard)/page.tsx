@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type Row = {
   time: string
@@ -55,20 +55,23 @@ export default function HomePage() {
   const [cards, setCards] = useState<PlanCard[]>([makeCard()])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
   const [message, setMessage] = useState('')
   const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null)
 
-  async function loadFromDb(date: string) {
+  const loadFromDb = useCallback(async (date: string) => {
     setLoading(true)
+    setHydrated(false)
     setMessage('')
 
     const res = await fetch(`/api/dplan-grid?date=${date}`)
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      setMessage(data.error || '조회 실패')
       setCards([makeCard()])
+      setMessage(data.error || '조회 실패')
       setLoading(false)
+      setHydrated(true)
       return
     }
 
@@ -77,8 +80,30 @@ export default function HomePage() {
     } else {
       setCards([makeCard()])
     }
+
     setLoading(false)
-  }
+    setHydrated(true)
+  }, [])
+
+  const saveToDb = useCallback(async (nextCards: PlanCard[], date: string, showMessage = false) => {
+    setSaving(true)
+
+    const res = await fetch('/api/dplan-grid', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, cards: nextCards }),
+    })
+
+    const data = await res.json().catch(() => ({}))
+    setSaving(false)
+
+    if (!res.ok) {
+      setMessage(data.error || '저장 실패')
+      return
+    }
+
+    if (showMessage) setMessage('전체 저장 완료')
+  }, [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -86,7 +111,17 @@ export default function HomePage() {
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [selectedDate])
+  }, [loadFromDb, selectedDate])
+
+  useEffect(() => {
+    if (!hydrated || loading) return
+
+    const timer = window.setTimeout(() => {
+      void saveToDb(cards, selectedDate, false)
+    }, 800)
+
+    return () => window.clearTimeout(timer)
+  }, [cards, hydrated, loading, saveToDb, selectedDate])
 
   function updateCard(index: number, patch: Partial<PlanCard>) {
     setCards((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
@@ -113,27 +148,6 @@ export default function HomePage() {
   function resetCurrentDate() {
     setCards([makeCard()])
     setMessage('')
-  }
-
-  async function saveToDb() {
-    setSaving(true)
-    setMessage('')
-
-    const res = await fetch('/api/dplan-grid', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: selectedDate, cards }),
-    })
-
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMessage(data.error || '저장 실패')
-      setSaving(false)
-      return
-    }
-
-    setMessage('DB 저장 완료')
-    setSaving(false)
   }
 
   return (
@@ -175,11 +189,11 @@ export default function HomePage() {
             </button>
             <button
               type="button"
-              onClick={saveToDb}
+              onClick={() => void saveToDb(cards, selectedDate, true)}
               disabled={saving || loading}
               className="px-2.5 py-1 text-xs rounded-md bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              {saving ? '저장중...' : 'DB 저장'}
+              {saving ? '저장중...' : '전체 저장'}
             </button>
           </div>
         </div>
@@ -225,34 +239,36 @@ export default function HomePage() {
                 )}
               </div>
 
-              <div className="p-1.5 space-y-1">
+              <div className="py-1.5">
                 {card.rows.map((row, rowIndex) => {
                   const isLunch = row.time === LUNCH_TIME
+
+                  if (isLunch) {
+                    return (
+                      <div key={row.time} className="relative h-7">
+                        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t-[3px] border-slate-300" />
+                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 px-1 text-[10px] text-slate-500 bg-white tabular-nums">
+                          {row.time}
+                        </span>
+                      </div>
+                    )
+                  }
+
                   return (
-                    <div key={row.time} className={`grid grid-cols-[42px_1fr_18px] items-center gap-1 ${isLunch ? 'py-0.5' : ''}`}>
+                    <div key={row.time} className="px-1.5 py-0.5 grid grid-cols-[42px_1fr_18px] items-center gap-1">
                       <span className="text-[10px] text-slate-500 tabular-nums">{row.time}</span>
-
-                      {isLunch ? (
-                        <div className="h-6 rounded-sm border-y-2 border-slate-300 bg-slate-50" />
-                      ) : (
-                        <input
-                          value={row.content}
-                          onChange={(e) => updateRow(cardIndex, rowIndex, { content: e.target.value })}
-                          placeholder="클릭 입력"
-                          className="h-6 text-[11px] rounded-md border border-slate-200 px-1.5 outline-none focus:border-indigo-400"
-                        />
-                      )}
-
-                      {isLunch ? (
-                        <span />
-                      ) : (
-                        <input
-                          type="checkbox"
-                          checked={row.done}
-                          onChange={(e) => updateRow(cardIndex, rowIndex, { done: e.target.checked })}
-                          className="w-3.5 h-3.5 accent-indigo-500"
-                        />
-                      )}
+                      <input
+                        value={row.content}
+                        onChange={(e) => updateRow(cardIndex, rowIndex, { content: e.target.value })}
+                        placeholder="클릭 입력"
+                        className="h-6 text-[11px] rounded-md border border-slate-200 px-1.5 outline-none focus:border-indigo-400"
+                      />
+                      <input
+                        type="checkbox"
+                        checked={row.done}
+                        onChange={(e) => updateRow(cardIndex, rowIndex, { done: e.target.checked })}
+                        className="w-3.5 h-3.5 accent-indigo-500"
+                      />
                     </div>
                   )
                 })}
