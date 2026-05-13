@@ -172,9 +172,11 @@ export default function HomePage() {
 
         const rows = c.rows.map((r) => ({ ...r }))
         const current = rows[rowIndex]
+        const nextExtended = !current.extended
         rows[rowIndex] = {
           ...current,
-          extended: !current.extended,
+          extended: nextExtended,
+          content: nextExtended ? '' : current.content,
         }
 
         return { ...c, rows }
@@ -318,16 +320,18 @@ export default function HomePage() {
                     <div key={row.time} className="px-1.5 py-0 grid grid-cols-[34px_1fr_36px] items-center gap-1">
                       <span className="text-xs text-slate-600">{displayHour(row.time)}</span>
                       <input
-                        value={row.content}
+                        value={isExtended ? '' : row.content}
                         onChange={(e) => updateRowContent(cardIndex, rowIndex, e.target.value)}
                         disabled={isExtended}
-                        placeholder="클릭 입력"
+                        placeholder={isExtended ? '' : '클릭 입력'}
                         className={`h-8 text-sm border border-slate-200 px-2 outline-none focus:border-indigo-400 ${
-                          isExtended
-                            ? 'rounded-t-none rounded-b-md border-t-0 bg-white text-slate-700'
-                            : isNextExtended
-                              ? 'rounded-t-md rounded-b-none'
-                              : 'rounded-md'
+                          isExtended && isNextExtended
+                            ? 'rounded-none border-t-0 border-b-0 bg-white'
+                            : isExtended
+                              ? 'rounded-t-none rounded-b-md border-t-0 bg-white'
+                              : isNextExtended
+                                ? 'rounded-t-md rounded-b-none border-b-0'
+                                : 'rounded-md'
                         }`}
                       />
                       <button
