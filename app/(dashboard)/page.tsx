@@ -247,9 +247,9 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
           {cards.map((card, cardIndex) => (
             <section key={cardIndex} className="bg-white border border-slate-300 ring-1 ring-slate-200 rounded-lg shadow-md overflow-hidden">
-              <div className="px-2 py-2 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50/70 flex items-center gap-1">
+              <div className="px-2 py-2 border-b border-slate-200 bg-indigo-100/80 flex items-center gap-1">
                 {editingNameIndex === cardIndex ? (
-                  <div className="w-full flex items-center gap-1 bg-indigo-100/80 rounded-md px-1.5 py-1">
+                  <div className="w-full flex items-center gap-1 bg-transparent rounded-md px-1.5 py-1">
                     <input
                       value={card.name}
                       onChange={(e) => updateCard(cardIndex, { name: e.target.value })}
@@ -268,7 +268,7 @@ export default function HomePage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="w-full flex items-center gap-1 bg-indigo-100/80 rounded-md px-1.5 py-1">
+                  <div className="w-full flex items-center gap-1 bg-transparent rounded-md px-1.5 py-1">
                     <p className="flex-1 text-sm font-semibold text-slate-800 truncate px-1">{card.name || `이름 ${cardIndex + 1}`}</p>
                     <button
                       type="button"
