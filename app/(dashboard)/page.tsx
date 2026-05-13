@@ -60,14 +60,17 @@ function normalizeCards(input: unknown): PlanCard[] {
 
   return input.map((card) => {
     const c = card as PlanCard
-    const rows = Array.isArray(c?.rows)
-      ? c.rows.map((r) => ({
-          time: typeof r.time === 'string' ? r.time : '',
-          content: typeof r.content === 'string' ? r.content : '',
-          done: typeof r.done === 'boolean' ? r.done : false,
-          extended: typeof r.extended === 'boolean' ? r.extended : false,
-        }))
-      : makeRows()
+    const sourceRows = Array.isArray(c?.rows) ? c.rows : []
+
+    const rows = TIME_SLOTS.map((slot) => {
+      const found = sourceRows.find((r) => r && typeof r.time === 'string' && r.time === slot)
+      return {
+        time: slot,
+        content: typeof found?.content === 'string' ? found.content : '',
+        done: typeof found?.done === 'boolean' ? found.done : false,
+        extended: typeof found?.extended === 'boolean' ? found.extended : false,
+      }
+    })
 
     return {
       name: typeof c?.name === 'string' ? c.name : '',
