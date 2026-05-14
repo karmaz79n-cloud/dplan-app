@@ -24,16 +24,20 @@ export async function GET() {
       (profiles ?? []).map((p: Record<string, unknown>) => [p.id, p])
     )
 
-    const result = authData.users.map(u => ({
-      id: u.id,
-      email: u.email ?? '',
-      role: (profileMap.get(u.id) as Record<string, unknown>)?.role ?? 'viewer',
-      name: (profileMap.get(u.id) as Record<string, unknown>)?.name ?? null,
-      phone: (profileMap.get(u.id) as Record<string, unknown>)?.phone ?? null,
-      department: (profileMap.get(u.id) as Record<string, unknown>)?.department ?? null,
-      status: (profileMap.get(u.id) as Record<string, unknown>)?.status ?? 'approved',
-      last_sign_in: u.last_sign_in_at ?? null,
-    }))
+    const result = authData.users
+      .filter(u => {
+        const status = (profileMap.get(u.id) as Record<string, unknown>)?.status ?? 'approved'
+        return status !== 'pending' && status !== 'rejected'
+      })
+      .map(u => ({
+        id: u.id,
+        email: u.email ?? '',
+        role: (profileMap.get(u.id) as Record<string, unknown>)?.role ?? 'viewer',
+        name: (profileMap.get(u.id) as Record<string, unknown>)?.name ?? null,
+        phone: (profileMap.get(u.id) as Record<string, unknown>)?.phone ?? null,
+        department: (profileMap.get(u.id) as Record<string, unknown>)?.department ?? null,
+        last_sign_in: u.last_sign_in_at ?? null,
+      }))
 
     return NextResponse.json(result)
   } catch (e: unknown) {
